@@ -1,0 +1,9 @@
+To install the chart:
+ helm upgrade myapp ./charts/bluegreen-app -n myns --install --set
+activeColor=blue
+To update green images (example):
+ helm upgrade myapp ./charts/bluegreen-app -n myns --install --reuse-values --
+set app.imageWebGreen=docker.io/you/web:tag
+To cut over:
+ helm upgrade myapp ./charts/bluegreen-app -n myns --install --reuse-values --
+set activeColor=green
