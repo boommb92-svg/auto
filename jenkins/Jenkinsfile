@@ -1,0 +1,58 @@
+pipeline {
+withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+sh '''
+export KUBECONFIG=${KUBECONFIG_FILE}
+# Wait for green deployments to be ready
+kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-green --timeout=180s
+kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-product-green --timeout=180s
+kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-order-green --timeout=180s
+
+
+# Run simple smoke test: call web-frontend green pod via port-forward
+POD=$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
+kubectl -n ${NAMESPACE} port-forward ${POD} 8081:8080 >/tmp/pf.log 2>&1 &
+PF_PID=$!
+sleep 2
+if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
+echo "Smoke test failed"
+kill ${PF_PID} || true
+exit 1
+fi
+kill ${PF_PID} || true
+'''
+}
+}
+}
+
+
+stage('Cutover to green (helm update activeColor)') {
+steps {
+withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+sh '''
+export KUBECONFIG=${KUBECONFIG_FILE}
+helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --set activeColor=green --reuse-values --wait --timeout 2m
+'''
+}
+}
+}
+
+
+stage('Post cutover validation') {
+steps {
+withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+sh '''
+export KUBECONFIG=${KUBECONFIG_FILE}
+kubectl -n ${NAMESPACE} get svc,deployment -l app.kubernetes.io/name=web-frontend
+'''
+}
+}
+}
+}
+
+
+post {
+failure {
+echo 'Failure: pipeline will not change activeColor — traffic remains on last active color'
+}
+}
+}
