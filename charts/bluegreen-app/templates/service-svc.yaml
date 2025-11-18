@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+name: {{ include "bg.name" . }}-svc
+  labels:
+  app.kubernetes.io/name: {{ .Values.labels.app }}
+spec:
+type: {{ .Values.service.type }}
+ports:
+- port: {{ .Values.service.port }}
+targetPort: {{ .Values.app.containerPort }}
+protocol: TCP
+selector:
+app.kubernetes.io/name: {{ .Values.labels.app }}
+color: {{ .Values.activeColor }}
