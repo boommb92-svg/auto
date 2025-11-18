@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: {{ include "bg.name" . }}-web-{{ .Values.activeColor }}
+labels:
+app.kubernetes.io/name: web-frontend
+color: {{ .Values.activeColor }}
+spec:
+replicas: {{ .Values.app.replicas }}
+selector:
+matchLabels:
+app.kubernetes.io/name: web-frontend
+color: {{ .Values.activeColor }}
+template:
+metadata:
+labels:
+app.kubernetes.io/name: web-frontend
+color: {{ .Values.activeColor }}
+spec:
+containers:
+- name: web
+image: "{{ if eq .Values.activeColor "blue" }}
+{{ .Values.app.imageWebBlue }}{{ else }}{{ .Values.app.imageWebGreen }}
+{{ end }}"
+ports:
+- containerPort: {{ .Values.app.containerPort }}
+readinessProbe:
+httpGet:
+path: /health
+port: {{ .Values.app.containerPort }}
+initialDelaySeconds: 10
+periodSeconds: 10
+resources:
+{{ toYaml .Values.app.resources | indent 8 }}
