@@ -1,0 +1,5 @@
+apiVersion: v2
+name: bluegreen-app
+description: Blue/Green Java ecommerce chart (web, product, order)
+version: 0.1.0
+appVersion: "1.0.0"
