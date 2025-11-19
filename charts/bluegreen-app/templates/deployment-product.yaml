@@ -1,34 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-name: {{ include "bg.name" . }}-product-{{ .Values.activeColor }}
-labels:
-app.kubernetes.io/name: product-service
-color: {{ .Values.activeColor }}
+  name: {{ printf "%s-product-%s" (include "bg.name" .) .Values.activeColor | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "bg.labels" . | nindent 4 }}
+    component: product
+    color: {{ .Values.activeColor }}
 spec:
-replicas: {{ .Values.app.replicas }}
-selector:
-matchLabels:
-app.kubernetes.io/name: product-service
-color: {{ .Values.activeColor }}
-template:
-metadata:
-labels:
-app.kubernetes.io/name: product-service
-color: {{ .Values.activeColor }}
-spec:
-containers:
-- name: product
-image: "{{ if eq .Values.activeColor "blue" }}
-{{ .Values.app.imageProductBlue }}{{ else }}{{ .Values.app.imageProductGreen }}
-{{ end }}"
-ports:
-- containerPort: {{ .Values.app.containerPort }}
-readinessProbe:
-httpGet:
-path: /health
-port: {{ .Values.app.containerPort }}
-initialDelaySeconds: 10
-periodSeconds: 10
-resources:
-{{ toYaml .Values.app.resources | indent 8 }}
+  replicas: {{ .Values.app.replicas | default 2 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.labels.app }}
+      component: product
+      color: {{ .Values.activeColor }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.labels.app }}
+        component: product
+        color: {{ .Values.activeColor }}
+    spec:
+      containers:
+      - name: product
+        image: {{ ternary .Values.app.imageProductGreen .Values.app.imageProductBlue (eq .Values.activeColor "green") | quote }}
+        ports:
+          - containerPort: {{ .Values.app.containerPort }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.containerPort }}
+        resources:
+{{ toYaml .Values.app.resources | indent 10 }}
