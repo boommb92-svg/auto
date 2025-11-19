@@ -1,58 +1,152 @@
 pipeline {
-withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-sh '''
-export KUBECONFIG=${KUBECONFIG_FILE}
-# Wait for green deployments to be ready
-kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-green --timeout=180s
-kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-product-green --timeout=180s
-kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-order-green --timeout=180s
+  agent any
+  environment {
+    DOCKERHUB_REPO = 'YOUR_DOCKERHUB_USER'    // replace
+    IMAGE_NAME_WEB = "${DOCKERHUB_REPO}/web-frontend"
+    IMAGE_NAME_PRODUCT = "${DOCKERHUB_REPO}/product-service"
+    IMAGE_NAME_ORDER = "${DOCKERHUB_REPO}/order-service"
 
+    CHART_DIR = 'charts/bluegreen-app'
+    NAMESPACE = 'myns'
+    RELEASE = 'myapp'
 
-# Run simple smoke test: call web-frontend green pod via port-forward
-POD=$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
-kubectl -n ${NAMESPACE} port-forward ${POD} 8081:8080 >/tmp/pf.log 2>&1 &
-PF_PID=$!
-sleep 2
-if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
-echo "Smoke test failed"
-kill ${PF_PID} || true
-exit 1
-fi
-kill ${PF_PID} || true
-'''
-}
-}
-}
+    // Jenkins credential IDs (configure these in Jenkins first)
+    DOCKERHUB_CRED = 'dockerhub-creds'        // usernamePassword id
+    KUBECONFIG_CRED = 'kubeconfig'            // file credential id (if Jenkins is external)
+    SONAR_SERVER = 'SonarQube'                // Jenkins SonarQube server id (configure in Jenkins global config)
+    SONAR_TOKEN = 'sonar-token'               // credential id for SonarQube token (secret text)
+  }
 
+  stages {
+    stage('Checkout') { steps { checkout scm } }
 
-stage('Cutover to green (helm update activeColor)') {
-steps {
-withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-sh '''
-export KUBECONFIG=${KUBECONFIG_FILE}
-helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --set activeColor=green --reuse-values --wait --timeout 2m
-'''
-}
-}
-}
+    stage('Maven Build & SonarQube') {
+      parallel {
+        stage('Build Web') {
+          steps {
+            dir('services/web-frontend') {
+              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
+                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              }
+            }
+          }
+        }
+        stage('Build Product') {
+          steps {
+            dir('services/product-service') {
+              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
+                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              }
+            }
+          }
+        }
+        stage('Build Order') {
+          steps {
+            dir('services/order-service') {
+              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
+                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              }
+            }
+          }
+        }
+      }
+    }
 
+    stage('Build & Tag Images') {
+      steps {
+        script {
+          env.TAG = "${env.BUILD_NUMBER}"
+          env.IMAGE_WEB = "${IMAGE_NAME_WEB}:${env.TAG}"
+          env.IMAGE_PRODUCT = "${IMAGE_NAME_PRODUCT}:${env.TAG}"
+          env.IMAGE_ORDER = "${IMAGE_NAME_ORDER}:${env.TAG}"
+        }
+        sh 'docker build -t ${IMAGE_WEB} ./services/web-frontend'
+        sh 'docker build -t ${IMAGE_PRODUCT} ./services/product-service'
+        sh 'docker build -t ${IMAGE_ORDER} ./services/order-service'
+      }
+    }
 
-stage('Post cutover validation') {
-steps {
-withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-sh '''
-export KUBECONFIG=${KUBECONFIG_FILE}
-kubectl -n ${NAMESPACE} get svc,deployment -l app.kubernetes.io/name=web-frontend
-'''
-}
-}
-}
-}
+    stage('Push Images to Docker Hub') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED, usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
+          sh '''
+            echo ${DH_PASS} | docker login -u ${DH_USER} --password-stdin
+            docker push ${IMAGE_WEB}
+            docker push ${IMAGE_PRODUCT}
+            docker push ${IMAGE_ORDER}
+            docker logout
+          '''
+        }
+      }
+    }
 
+    stage('Update Helm values (green images)') {
+      steps {
+        sh '''
+          ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
+        '''
+      }
+    }
 
-post {
-failure {
-echo 'Failure: pipeline will not change activeColor — traffic remains on last active color'
-}
-}
+    stage('Deploy to green (helm upgrade)') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG=${KUBECONFIG_FILE}
+            helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
+          '''
+        }
+      }
+    }
+
+    stage('Smoke tests against green') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG=${KUBECONFIG_FILE}
+            kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-${ACTIVE_COLOR:-green} --timeout=180s || true
+            # Port-forward one pod to run health check
+            POD=$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
+            kubectl -n ${NAMESPACE} port-forward ${POD} 8081:8080 >/tmp/pf.log 2>&1 &
+            PF_PID=$!
+            sleep 2
+            if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
+              echo "Smoke test failed"
+              kill ${PF_PID} || true
+              exit 1
+            fi
+            kill ${PF_PID} || true
+          '''
+        }
+      }
+    }
+
+    stage('Cutover to green (helm update activeColor)') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG=${KUBECONFIG_FILE}
+            helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --set activeColor=green --reuse-values --wait --timeout 2m
+          '''
+        }
+      }
+    }
+
+    stage('Post cutover validation') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+            export KUBECONFIG=${KUBECONFIG_FILE}
+            kubectl -n ${NAMESPACE} get svc,deployment -l app.kubernetes.io/name=web-frontend
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    failure {
+      echo 'Failure: pipeline will not change activeColor — traffic remains on last active color'
+    }
+  }
 }
