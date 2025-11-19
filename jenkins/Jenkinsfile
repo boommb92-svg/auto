@@ -36,7 +36,7 @@ pipeline {
               mvn -B -DskipTests package sonar:sonar \
                 -Dsonar.login=${SONAR_TOKEN} \
                 -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.projectKey=web-frontend \
+                -Dsonar.projectKey=projecty_web-frontend \
                 -Dsonar.organization=${SONAR_ORG}
             """
           }
@@ -55,7 +55,7 @@ pipeline {
               mvn -B -DskipTests package sonar:sonar \
                 -Dsonar.login=${SONAR_TOKEN} \
                 -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.projectKey=product-services \
+                -Dsonar.projectKey=projecty_product-services \
                 -Dsonar.organization=${SONAR_ORG}
             """
           }
@@ -74,7 +74,7 @@ pipeline {
               mvn -B -DskipTests package sonar:sonar \
                 -Dsonar.login=${SONAR_TOKEN} \
                 -Dsonar.host.url=https://sonarcloud.io \
-                -Dsonar.projectKey=order-services \
+                -Dsonar.projectKey=projecty_order-service \
                 -Dsonar.organization=${SONAR_ORG}
             """
           }
