@@ -38,6 +38,8 @@ pipeline {
                 -Dsonar.host.url=https://sonarcloud.io \
                 -Dsonar.projectKey=projecty_web-frontend \
                 -Dsonar.organization=${SONAR_ORG}
+                -Dsonar.branch.name=main
+
             """
           }
         }
@@ -57,6 +59,8 @@ pipeline {
                 -Dsonar.host.url=https://sonarcloud.io \
                 -Dsonar.projectKey=projecty_product-services \
                 -Dsonar.organization=${SONAR_ORG}
+                -Dsonar.branch.name=main
+
             """
           }
         }
@@ -76,6 +80,8 @@ pipeline {
                 -Dsonar.host.url=https://sonarcloud.io \
                 -Dsonar.projectKey=projecty_order-service \
                 -Dsonar.organization=${SONAR_ORG}
+                -Dsonar.branch.name=main
+
             """
           }
         }
