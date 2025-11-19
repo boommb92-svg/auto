@@ -1,36 +1,30 @@
-# defaults — web/product/order images (both colors)
+# images (blue & green slots)
 app:
-imageWebBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-imageWebGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-imageProductBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-imageProductGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-imageOrderBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-imageOrderGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
+  imageWebBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
+  imageWebGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
+  imageProductBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
+  imageProductGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
+  imageOrderBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
+  imageOrderGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
 
-
-containerPort: 8080
-replicas: 2
-resources:
-requests:
-cpu: "250m"
-memory: "512Mi"
-limits:
-cpu: "500m"
-memory: "1Gi"
-
+  containerPort: 8080
+  replicas: 2
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
 
 activeColor: "blue"
 
-
 labels:
-app: web-frontend
+  app: web-frontend
 
-
-# Postgres
 postgres:
-enabled: true
-image: postgres:15
-postgresUser: postgres
-postgresPassword: changeme
-postgresDatabase: ecommerce
-storage
+  enabled: true
+  image: postgres:15
+  postgresUser: postgres
+  postgresPassword: changeme
+  postgresDatabase:
