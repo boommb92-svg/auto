@@ -1,7 +1,8 @@
 pipeline {
   agent any
+
   environment {
-    DOCKERHUB_REPO = 'YOUR_DOCKERHUB_USER'    // replace
+    DOCKERHUB_REPO = 'pavanyennu'
     IMAGE_NAME_WEB = "${DOCKERHUB_REPO}/web-frontend"
     IMAGE_NAME_PRODUCT = "${DOCKERHUB_REPO}/product-service"
     IMAGE_NAME_ORDER = "${DOCKERHUB_REPO}/order-service"
@@ -10,41 +11,47 @@ pipeline {
     NAMESPACE = 'myns'
     RELEASE = 'myapp'
 
-    // Jenkins credential IDs (configure these in Jenkins first)
-    DOCKERHUB_CRED = 'dockerhub-creds'        // usernamePassword id
-    KUBECONFIG_CRED = 'kubeconfig'            // file credential id (if Jenkins is external)
-    SONAR_SERVER = 'SonarQube'                // Jenkins SonarQube server id (configure in Jenkins global config)
-    SONAR_TOKEN = 'sonar-token'               // credential id for SonarQube token (secret text)
+    SONAR_HOST = 'https://sonarcloud.io'
+    PROJECT_KEY_WEB = 'web-frontend'
+    PROJECT_KEY_PRODUCT = 'product-service'
+    PROJECT_KEY_ORDER = 'order-service'
   }
 
   stages {
-    stage('Checkout') { steps { checkout scm } }
+    stage('Checkout') {
+      steps { checkout scm }
+    }
 
-    stage('Maven Build & SonarQube') {
+    stage('Maven Build & SonarCloud') {
       parallel {
         stage('Build Web') {
           steps {
             dir('services/web-frontend') {
-              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
-                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              script {
+                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_WEB} -Dsonar.host.url=${SONAR_HOST}"
               }
             }
           }
         }
+
         stage('Build Product') {
           steps {
             dir('services/product-service') {
-              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
-                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              script {
+                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_PRODUCT} -Dsonar.host.url=${SONAR_HOST}"
               }
             }
           }
         }
+
         stage('Build Order') {
           steps {
             dir('services/order-service') {
-              withCredentials([string(credentialsId: env.SONAR_TOKEN, variable: 'SONAR_TOKEN')]) {
-                sh 'mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.host.url=http://sonarqube.local || true'
+              script {
+                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_ORDER} -Dsonar.host.url=${SONAR_HOST}"
               }
             }
           }
@@ -52,94 +59,69 @@ pipeline {
       }
     }
 
-    stage('Build & Tag Images') {
+    stage('Build & Push Docker Images') {
       steps {
         script {
           env.TAG = "${env.BUILD_NUMBER}"
           env.IMAGE_WEB = "${IMAGE_NAME_WEB}:${env.TAG}"
           env.IMAGE_PRODUCT = "${IMAGE_NAME_PRODUCT}:${env.TAG}"
           env.IMAGE_ORDER = "${IMAGE_NAME_ORDER}:${env.TAG}"
+
+          // Fetch Docker Hub credentials from GSM
+          DH_USER = sh(script: 'gcloud secrets versions access latest --secret="docker-username"', returnStdout: true).trim()
+          DH_PASS = sh(script: 'gcloud secrets versions access latest --secret="docker-password"', returnStdout: true).trim()
         }
-        sh 'docker build -t ${IMAGE_WEB} ./services/web-frontend'
-        sh 'docker build -t ${IMAGE_PRODUCT} ./services/product-service'
-        sh 'docker build -t ${IMAGE_ORDER} ./services/order-service'
+
+        sh """
+          docker build -t ${IMAGE_WEB} ./services/web-frontend
+          docker build -t ${IMAGE_PRODUCT} ./services/product-service
+          docker build -t ${IMAGE_ORDER} ./services/order-service
+
+          echo ${DH_PASS} | docker login -u ${DH_USER} --password-stdin
+          docker push ${IMAGE_WEB}
+          docker push ${IMAGE_PRODUCT}
+          docker push ${IMAGE_ORDER}
+          docker logout
+        """
       }
     }
 
-    stage('Push Images to Docker Hub') {
+    stage('Update Helm values & Deploy') {
       steps {
-        withCredentials([usernamePassword(credentialsId: env.DOCKERHUB_CRED, usernameVariable: 'DH_USER', passwordVariable: 'DH_PASS')]) {
-          sh '''
-            echo ${DH_PASS} | docker login -u ${DH_USER} --password-stdin
-            docker push ${IMAGE_WEB}
-            docker push ${IMAGE_PRODUCT}
-            docker push ${IMAGE_ORDER}
-            docker logout
-          '''
-        }
-      }
-    }
-
-    stage('Update Helm values (green images)') {
-      steps {
-        sh '''
+        sh """
           ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
-        '''
+          helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
+        """
       }
     }
 
-    stage('Deploy to green (helm upgrade)') {
+    stage('Smoke Test') {
       steps {
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            export KUBECONFIG=${KUBECONFIG_FILE}
-            helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
-          '''
-        }
+        sh """
+          kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-green --timeout=180s
+          POD=\$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n ${NAMESPACE} port-forward \$POD 8081:8080 >/tmp/pf.log 2>&1 &
+          PF_PID=\$!
+          sleep 2
+          if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
+            echo "Smoke test failed"
+            kill \$PF_PID || true
+            exit 1
+          fi
+          kill \$PF_PID || true
+        """
       }
     }
 
-    stage('Smoke tests against green') {
+    stage('Cutover to Green') {
       steps {
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            export KUBECONFIG=${KUBECONFIG_FILE}
-            kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-${ACTIVE_COLOR:-green} --timeout=180s || true
-            # Port-forward one pod to run health check
-            POD=$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
-            kubectl -n ${NAMESPACE} port-forward ${POD} 8081:8080 >/tmp/pf.log 2>&1 &
-            PF_PID=$!
-            sleep 2
-            if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
-              echo "Smoke test failed"
-              kill ${PF_PID} || true
-              exit 1
-            fi
-            kill ${PF_PID} || true
-          '''
-        }
+        sh "helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --set activeColor=green --reuse-values --wait --timeout 2m"
       }
     }
 
-    stage('Cutover to green (helm update activeColor)') {
+    stage('Post Cutover Validation') {
       steps {
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            export KUBECONFIG=${KUBECONFIG_FILE}
-            helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --set activeColor=green --reuse-values --wait --timeout 2m
-          '''
-        }
-      }
-    }
-
-    stage('Post cutover validation') {
-      steps {
-        withCredentials([file(credentialsId: env.KUBECONFIG_CRED, variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            export KUBECONFIG=${KUBECONFIG_FILE}
-            kubectl -n ${NAMESPACE} get svc,deployment -l app.kubernetes.io/name=web-frontend
-          '''
-        }
+        sh "kubectl -n ${NAMESPACE} get svc,deployment -l app.kubernetes.io/name=web-frontend"
       }
     }
   }
