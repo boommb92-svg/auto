@@ -1,34 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-name: {{ include "bg.name" . }}-order-{{ .Values.activeColor }}
-labels:
-app.kubernetes.io/name: order-service
-color: {{ .Values.activeColor }}
+  name: {{ printf "%s-order-%s" (include "bg.name" .) .Values.activeColor | trunc 63 | trimSuffix "-" }}
+  labels:
+    {{- include "bg.labels" . | nindent 4 }}
+    component: order
+    color: {{ .Values.activeColor }}
 spec:
-replicas: {{ .Values.app.replicas }}
-selector:
-matchLabels:
-app.kubernetes.io/name: order-service
-color: {{ .Values.activeColor }}
-template:
-metadata:
-labels:
-app.kubernetes.io/name: order-service
-color: {{ .Values.activeColor }}
-spec:
-containers:
-- name: order
-image: "{{ if eq .Values.activeColor "blue" }}
-{{ .Values.app.imageOrderBlue }}{{ else }}{{ .Values.app.imageOrderGreen }}
-{{ end }}"
-ports:
-- containerPort: {{ .Values.app.containerPort }}
-readinessProbe:
-httpGet:
-path: /health
-port: {{ .Values.app.containerPort }}
-initialDelaySeconds: 10
-periodSeconds: 10
-resources:
-{{ toYaml .Values.app.resources | indent 8 }}
+  replicas: {{ .Values.app.replicas | default 2 }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Values.labels.app }}
+      component: order
+      color: {{ .Values.activeColor }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.labels.app }}
+        component: order
+        color: {{ .Values.activeColor }}
+    spec:
+      containers:
+      - name: order
+        image: {{ ternary .Values.app.imageOrderGreen .Values.app.imageOrderBlue (eq .Values.activeColor "green") | quote }}
+        ports:
+          - containerPort: {{ .Values.app.containerPort }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.containerPort }}
+        resources:
+{{ toYaml .Values.app.resources | indent 10 }}
