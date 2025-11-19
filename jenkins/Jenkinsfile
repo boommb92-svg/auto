@@ -23,41 +23,66 @@ pipeline {
     }
 
     stage('Maven Build & SonarCloud') {
-      parallel {
-        stage('Build Web') {
-          steps {
-            dir('services/web-frontend') {
-              script {
-                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
-                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_WEB} -Dsonar.host.url=${SONAR_HOST}"
-              }
-            }
-          }
-        }
+  parallel {
+    stage('Build Web') {
+      steps {
+        dir('services/web-frontend') {
+          script {
+            // Fetch secrets from GSM
+            SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+            SONAR_ORG = sh(script: 'gcloud secrets versions access latest --secret="sonar-organization"', returnStdout: true).trim()
 
-        stage('Build Product') {
-          steps {
-            dir('services/product-service') {
-              script {
-                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
-                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_PRODUCT} -Dsonar.host.url=${SONAR_HOST}"
-              }
-            }
-          }
-        }
-
-        stage('Build Order') {
-          steps {
-            dir('services/order-service') {
-              script {
-                SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
-                sh "mvn -B -DskipTests package sonar:sonar -Dsonar.login=${SONAR_TOKEN} -Dsonar.projectKey=${PROJECT_KEY_ORDER} -Dsonar.host.url=${SONAR_HOST}"
-              }
-            }
+            sh """
+              mvn -B -DskipTests package sonar:sonar \
+                -Dsonar.login=${SONAR_TOKEN} \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.projectKey=web-frontend \
+                -Dsonar.organization=${SONAR_ORG}
+            """
           }
         }
       }
     }
+
+    stage('Build Product') {
+      steps {
+        dir('services/product-service') {
+          script {
+            SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+            SONAR_ORG = sh(script: 'gcloud secrets versions access latest --secret="sonar-organization"', returnStdout: true).trim()
+
+            sh """
+              mvn -B -DskipTests package sonar:sonar \
+                -Dsonar.login=${SONAR_TOKEN} \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.projectKey=product-service \
+                -Dsonar.organization=${SONAR_ORG}
+            """
+          }
+        }
+      }
+    }
+
+    stage('Build Order') {
+      steps {
+        dir('services/order-service') {
+          script {
+            SONAR_TOKEN = sh(script: 'gcloud secrets versions access latest --secret="sonar-token"', returnStdout: true).trim()
+            SONAR_ORG = sh(script: 'gcloud secrets versions access latest --secret="sonar-organization"', returnStdout: true).trim()
+
+            sh """
+              mvn -B -DskipTests package sonar:sonar \
+                -Dsonar.login=${SONAR_TOKEN} \
+                -Dsonar.host.url=https://sonarcloud.io \
+                -Dsonar.projectKey=order-service \
+                -Dsonar.organization=${SONAR_ORG}
+            """
+          }
+        }
+      }
+    }
+  }
+}
 
     stage('Build & Push Docker Images') {
       steps {
