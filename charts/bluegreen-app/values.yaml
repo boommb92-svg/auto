@@ -19,16 +19,18 @@ app:
 activeColor: "blue"
 
 labels:
-  app: web-frontend
+  app: web-frontend   # or whichever logical app name you want
 
 postgres:
   enabled: true
-  image: postgres:15
-  postgresUser: postgres
-  postgresPassword: changeme
-  postgresDatabase: ecommerce
+  image: "postgres:15"
+  postgresUser: "postgres"
+  postgresPassword: "changeme"
+  postgresDatabase: "ecommerce"
   storage:
     size: 10Gi
+    # storageClassName: "standard"   # optional
+  resources: {}   # set defaults so `toYaml` won't blow up
 
 prometheus:
   enabled: true
