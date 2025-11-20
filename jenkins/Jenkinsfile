@@ -122,8 +122,6 @@ pipeline {
         sh 'chmod +x ./jenkins/scripts/update-helm-values.sh'
         sh './jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}'
         sh "helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m"
-    }
-      steps {
         sh """
           ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
           helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
