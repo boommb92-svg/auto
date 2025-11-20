@@ -7,7 +7,7 @@ app:
   web:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-    containerPortWeb: 8080
+    containerPort: 8080
     replicas: 2
     resources:
       requests:
@@ -20,7 +20,7 @@ app:
   product:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-    containerPortProduct: 8081
+    containerPort: 8081
     replicas: 2
     resources:
       requests:
@@ -33,7 +33,7 @@ app:
   order:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-    containerPortOrder: 8082
+    containerPort: 8082
     replicas: 2
     resources:
       requests:
@@ -62,6 +62,7 @@ postgres:
 prometheus:
   enabled: true
   image: prom/prometheus:v2.45.0
+  containerPort: 9090
   resources:
     requests:
       cpu: "100m"
@@ -70,6 +71,7 @@ prometheus:
 grafana:
   enabled: true
   image: grafana/grafana:10.0.0
+  containerPort: 3000
   resources:
     requests:
       cpu: "100m"
@@ -78,3 +80,4 @@ grafana:
 service:
   type: ClusterIP
   port: 80
+
