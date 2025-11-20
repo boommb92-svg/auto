@@ -26,8 +26,8 @@ spec:
               containerPort: {{ .Values.prometheus.containerPort | default 9090 }}
           resources:
             requests:
-              cpu: {{ .Values.prometheus.resources.requests.cpu | default "100m" }}
-              memory: {{ .Values.prometheus.resources.requests.memory | default "256Mi" }}
+              cpu: {{ .Values.prometheus.resources.requests.cpu | default "100m" | quote }}
+              memory: {{ .Values.prometheus.resources.requests.memory | default "256Mi" | quote }}
             limits:
-              cpu: {{ .Values.prometheus.resources.limits.cpu | default "200m" }}
-              memory: {{ .Values.prometheus.resources.limits.memory | default "512Mi" }}
+              cpu: {{ .Values.prometheus.resources.limits.cpu | default "200m" | quote }}
+              memory: {{ .Values.prometheus.resources.limits.memory | default "512Mi" | quote }}
