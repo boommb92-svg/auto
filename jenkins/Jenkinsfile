@@ -139,7 +139,6 @@ stage('Update Helm values & Deploy') {
                 helm upgrade ${RELEASE} ${CHART_DIR} \
                     -n ${NAMESPACE} \
                     --install \
-                    --reuse-values \
                     --wait \
                     --timeout 5m
             """
