@@ -117,17 +117,18 @@ pipeline {
       }
     }
 
-    stage('Update Helm values & Deploy') {
-      steps {
+   stage('Update Helm values & Deploy') {
+    steps {
+        // Ensure the script is executable
         sh 'chmod +x ./jenkins/scripts/update-helm-values.sh'
+
+        // Run Helm update values script
         sh './jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}'
+
+        // Deploy with Helm
         sh "helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m"
-        sh """
-          ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
-          helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
-        """
-      }
     }
+}
 
     stage('Smoke Test') {
       steps {
