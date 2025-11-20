@@ -9,7 +9,7 @@ spec:
   ports:
     - name: http
       port: {{ .Values.service.port | default 80 }}
-      targetPort: {{ default 8081 .Values.app.product.containerPortProduct }}
+      targetPort: {{ .Values.app.product.containerPortProduct | default 8081 }}
       protocol: TCP
   selector:
     app.kubernetes.io/name: {{ .Values.labels.app }}
