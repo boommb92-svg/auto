@@ -1,5 +1,5 @@
 labels:
-  app: web-frontend   # logical base name used by helpers; change if desired
+  app: web-frontend   # base app name
 
 activeColor: "blue"
 
