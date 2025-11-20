@@ -136,11 +136,12 @@ stage('Update Helm values & Deploy') {
 
             // Deploy with Helm
             sh """
-                helm upgrade ${RELEASE} ${CHART_DIR} \
-                    -n ${NAMESPACE} \
-                    --install \
-                    --wait \
-                    --timeout 5m
+                johnwickboysclub@jenkins:~/jenkins$ helm upgrade myapp charts/bluegreen-app \
+                       -n myns \ 
+                       --set prometheus.enabled=false \
+                      --set grafana.enabled=false \
+                      --set postgres.enabled=false \
+                      --install
             """
         }
     }
