@@ -119,11 +119,33 @@ pipeline {
 
 stage('Update Helm values & Deploy') {
   steps {
-    sh """
-      chmod +x jenkins/scripts/update-helm-values.sh
-      ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
-      helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
-    """
+    script {
+      // 1. Fetch GCP service account key from Secret Manager
+      GCP_SA_KEY_JSON = sh(
+        script: 'gcloud secrets versions access latest --secret="jenkins-gcp-sa-key"',
+        returnStdout: true
+      ).trim()
+
+      // 2. Write it to a temporary file
+      writeFile file: 'gcp-key.json', text: GCP_SA_KEY_JSON
+
+      // 3. Activate service account
+      sh 'gcloud auth activate-service-account --key-file=gcp-key.json'
+
+      // 4. Set the GKE cluster context
+      sh '''
+        gcloud container clusters get-credentials autopilot-cluster --region europe-central2 --project pavan-477919
+      '''
+
+      // 5. Ensure the update script is executable
+      sh 'chmod +x jenkins/scripts/update-helm-values.sh'
+
+      // 6. Update Helm values with latest images
+      sh "./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}"
+
+      // 7. Deploy with Helm
+      sh "helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m"
+    }
   }
 }
 
