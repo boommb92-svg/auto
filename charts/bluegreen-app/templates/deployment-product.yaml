@@ -24,10 +24,10 @@ spec:
       - name: product
         image: {{ ternary .Values.app.imageProductGreen .Values.app.imageProductBlue (eq .Values.activeColor "green") | quote }}
         ports:
-          - containerPort: {{ .Values.app.containerPort }}
+          - containerPort: {{ .Values.app.containerPortProduct }}
         readinessProbe:
           httpGet:
             path: /health
-            port: {{ .Values.app.containerPort }}
+            port: {{ .Values.app.containerPortProduct }}
         resources:
 {{ toYaml .Values.app.resources | indent 10 }}
