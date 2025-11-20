@@ -119,15 +119,13 @@ pipeline {
 
 stage('Update Helm values & Deploy') {
     steps {
-        // Call the script directly with bash
+        // Call the script with bash directly
         sh "bash ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}"
 
-        // Then run Helm upgrade
+        // Run Helm upgrade
         sh "helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m"
     }
 }
-
-
 
     stage('Smoke Test') {
       steps {
