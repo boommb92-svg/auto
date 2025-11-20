@@ -2,12 +2,32 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ printf "%s-prometheus" (include "bg.name" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "bg.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ .Values.labels.app }}
     component: prometheus
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ .Values.labels.app }}
       component: prometheus
-...
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.labels.app }}
+        component: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: {{ .Values.prometheus.image | default "prom/prometheus:v2.45.0" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.prometheus.containerPort | default 9090 }}
+          resources:
+            requests:
+              cpu: {{ .Values.prometheus.resources.requests.cpu | default "100m" }}
+              memory: {{ .Values.prometheus.resources.requests.memory | default "256Mi" }}
+            limits:
+              cpu: {{ .Values.prometheus.resources.limits.cpu | default "200m" }}
+              memory: {{ .Values.prometheus.resources.limits.memory | default "512Mi" }}
