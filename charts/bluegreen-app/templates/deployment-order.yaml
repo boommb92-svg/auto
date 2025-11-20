@@ -2,38 +2,37 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "bg.fullname" . }}-order-{{ .Values.activeColor }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "bg.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.app.order.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.labels.app }}
-      tier: order
+      app.kubernetes.io/name: {{ .Values.labels.app }}
       color: {{ .Values.activeColor }}
   template:
     metadata:
       labels:
-        app: {{ .Values.labels.app }}
-        tier: order
+        app.kubernetes.io/name: {{ .Values.labels.app }}
         color: {{ .Values.activeColor }}
     spec:
       containers:
-        - name: order
-          image: {{ ternary .Values.app.order.imageGreen .Values.app.order.imageBlue (eq .Values.activeColor "green") | quote }}
-          ports:
-            - containerPort: {{ .Values.app.order.containerPort }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: {{ .Values.app.order.containerPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: {{ .Values.app.order.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 20
-          resources:
-{{ toYaml .Values.app.order.resources | indent 12 }}
+      - name: order
+        image: {{ ternary .Values.app.order.imageGreen .Values.app.order.imageBlue (eq .Values.activeColor "green") | quote }}
+        ports:
+          - containerPort: {{ .Values.app.order.containerPort }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.order.containerPort }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.order.containerPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        resources:
+{{ toYaml .Values.app.order.resources | indent 10 }}
