@@ -7,7 +7,7 @@ app:
   web:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-    containerPort: 8080
+    containerPortWeb: 8080
     replicas: 2
     resources:
       requests:
@@ -20,7 +20,7 @@ app:
   product:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-    containerPort: 8081
+    containerPortProduct: 8081
     replicas: 2
     resources:
       requests:
@@ -33,7 +33,7 @@ app:
   order:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-    containerPort: 8082
+    containerPortOrder: 8082
     replicas: 2
     resources:
       requests:
