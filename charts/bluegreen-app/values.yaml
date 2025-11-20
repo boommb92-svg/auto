@@ -1,5 +1,5 @@
 labels:
-  app: web-frontend   # base app name
+  app: web-frontend   # logical base name used by helpers; change if desired
 
 activeColor: "blue"
 
@@ -7,7 +7,7 @@ app:
   web:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-    containerPortWeb: 8080
+    containerPort: 8080
     replicas: 2
     resources:
       requests:
@@ -20,7 +20,7 @@ app:
   product:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-    containerPortProduct: 8081
+    containerPort: 8081
     replicas: 2
     resources:
       requests:
@@ -33,7 +33,7 @@ app:
   order:
     imageBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
     imageGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-    containerPortOrder: 8082
+    containerPort: 8082
     replicas: 2
     resources:
       requests:
@@ -71,15 +71,17 @@ prometheus:
       cpu: "200m"
       memory: "512Mi"
 
-
-
 grafana:
   enabled: true
   image: grafana/grafana:10.0.0
+  containerPort: 3000
   resources:
     requests:
       cpu: "100m"
       memory: "256Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
 
 service:
   type: ClusterIP
