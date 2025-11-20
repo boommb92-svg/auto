@@ -1,35 +1,39 @@
-# templates/deployment-order.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "bluegreen.fullname" . }}-order-{{ .Values.activeColor }}
+  name: {{ include "bg.fullname" . }}-order-{{ .Values.activeColor }}
+  labels:
+    {{- include "bg.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.app.order.replicas }}
   selector:
     matchLabels:
-      app: {{ include "bluegreen.fullname" . }}-order
+      app: {{ .Values.labels.app }}
+      tier: order
+      color: {{ .Values.activeColor }}
   template:
     metadata:
       labels:
-        app: {{ include "bluegreen.fullname" . }}-order
+        app: {{ .Values.labels.app }}
+        tier: order
+        color: {{ .Values.activeColor }}
     spec:
       containers:
         - name: order
           image: {{ ternary .Values.app.order.imageGreen .Values.app.order.imageBlue (eq .Values.activeColor "green") | quote }}
           ports:
-            - containerPort: {{ .Values.app.order.containerPortOrder }}
+            - containerPort: {{ .Values.app.order.containerPort }}
           readinessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.app.order.containerPortOrder }}
+              port: {{ .Values.app.order.containerPort }}
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.app.order.containerPortOrder }}
+              port: {{ .Values.app.order.containerPort }}
             initialDelaySeconds: 30
             periodSeconds: 20
           resources:
-{{ toYaml .Values.app.order.resources | indent 10 }}
-
+{{ toYaml .Values.app.order.resources | indent 12 }}
