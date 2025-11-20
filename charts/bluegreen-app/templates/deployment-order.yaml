@@ -1,12 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "bg.fullname" . }}-order
+  name: {{ printf "%s-order" (include "bg.name" .) | trunc 63 | trimSuffix "-" }}
   labels:
     {{- include "bg.labels" . | nindent 4 }}
-    color: {{ .Values.activeColor }}
 spec:
-  replicas: {{ .Values.app.order.replicas }}
+  replicas: {{ default 2 .Values.app.order.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ .Values.labels.app }}
@@ -19,19 +18,19 @@ spec:
     spec:
       containers:
         - name: order
-          image: {{ ternary .Values.app.order.imageGreen .Values.app.order.imageBlue (eq .Values.activeColor "green") }}
+          image: {{ ternary .Values.app.order.imageGreen .Values.app.order.imageBlue (eq .Values.activeColor "green") | quote }}
           ports:
-            - containerPort: {{ .Values.app.order.containerPortOrder }}
+            - containerPort: {{ default 8082 .Values.app.order.containerPortOrder }}
           readinessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.app.order.containerPortOrder }}
+              port: {{ default 8082 .Values.app.order.containerPortOrder }}
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /health
-              port: {{ .Values.app.order.containerPortOrder }}
+              port: {{ default 8082 .Values.app.order.containerPortOrder }}
             initialDelaySeconds: 30
             periodSeconds: 20
           resources:
