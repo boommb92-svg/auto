@@ -33,5 +33,4 @@ spec:
               port: {{ default 8081 .Values.app.product.containerPortProduct }}
             initialDelaySeconds: 30
             periodSeconds: 20
-          resources:
-{{ toYaml .Values.app.product.resources | indent 10 }}
+ 
