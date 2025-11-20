@@ -2,38 +2,37 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "bg.fullname" . }}-web-{{ .Values.activeColor }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "bg.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.app.web.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.labels.app }}
-      tier: web
+      app.kubernetes.io/name: {{ .Values.labels.app }}
       color: {{ .Values.activeColor }}
   template:
     metadata:
       labels:
-        app: {{ .Values.labels.app }}
-        tier: web
+        app.kubernetes.io/name: {{ .Values.labels.app }}
         color: {{ .Values.activeColor }}
     spec:
       containers:
-        - name: web
-          image: {{ ternary .Values.app.web.imageGreen .Values.app.web.imageBlue (eq .Values.activeColor "green") | quote }}
-          ports:
-            - containerPort: {{ .Values.app.web.containerPort }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: {{ .Values.app.web.containerPort }}
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: {{ .Values.app.web.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 20
-          resources:
-{{ toYaml .Values.app.web.resources | indent 12 }}
+      - name: web
+        image: {{ ternary .Values.app.web.imageGreen .Values.app.web.imageBlue (eq .Values.activeColor "green") | quote }}
+        ports:
+          - containerPort: {{ .Values.app.web.containerPort }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.web.containerPort }}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.app.web.containerPort }}
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        resources:
+{{ toYaml .Values.app.web.resources | indent 10 }}
