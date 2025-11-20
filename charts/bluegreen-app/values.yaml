@@ -1,27 +1,47 @@
 labels:
   app: web-frontend   # logical base name used by helpers; change if desired
 
-app:
-  containerPort: 8080
-  replicas: 2
-  resources:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-
-# images placeholders (blue/green)
-app:
-  imageWebBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-  imageWebGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
-  imageProductBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-  imageProductGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
-  imageOrderBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-  imageOrderGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
-
 activeColor: "blue"
+
+app:
+  web:
+    imageBlue: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
+    imageGreen: "docker.io/YOUR_DOCKERHUB_USER/web-frontend:latest"
+    containerPort: 8080
+    replicas: 2
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+
+  product:
+    imageBlue: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
+    imageGreen: "docker.io/YOUR_DOCKERHUB_USER/product-service:latest"
+    containerPort: 8081
+    replicas: 2
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+
+  order:
+    imageBlue: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
+    imageGreen: "docker.io/YOUR_DOCKERHUB_USER/order-service:latest"
+    containerPort: 8082
+    replicas: 2
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
 
 postgres:
   enabled: true
