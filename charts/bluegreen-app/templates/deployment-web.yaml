@@ -1,37 +1,16 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: {{ printf "%s-web" (include "bg.name" .) | trunc 63 | trimSuffix "-" }}
+  name: {{ printf "%s-web-svc" (include "bg.name" .) | trunc 63 | trimSuffix "-" }}
   labels:
     {{- include "bg.labels" . | nindent 4 }}
 spec:
-  replicas: {{ default 2 .Values.app.web.replicas }}
+  type: {{ .Values.service.type | default "ClusterIP" }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port | default 80 }}
+      targetPort: {{ .Values.app.web.containerPortWeb }}
+      protocol: TCP
   selector:
-    matchLabels:
-      app.kubernetes.io/name: {{ .Values.labels.app }}
-      color: {{ .Values.activeColor }}
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: {{ .Values.labels.app }}
-        color: {{ .Values.activeColor }}
-    spec:
-      containers:
-        - name: web
-          image: {{ ternary .Values.app.web.imageGreen .Values.app.web.imageBlue (eq .Values.activeColor "green") | quote }}
-          ports:
-            - containerPort: {{ default 8080 .Values.app.web.containerPortWeb }}
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: {{ default 8080 .Values.app.web.containerPortWeb }}
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: {{ default 8080 .Values.app.web.containerPortWeb }}
-            initialDelaySeconds: 30
-            periodSeconds: 20
-          resources:
-{{ toYaml .Values.app.web.resources | indent 10 }}
+    app.kubernetes.io/name: {{ .Values.labels.app }}
+    color: {{ .Values.activeColor }}
