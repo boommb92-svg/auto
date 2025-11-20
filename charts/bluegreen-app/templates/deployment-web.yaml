@@ -24,17 +24,17 @@ spec:
       - name: web
         image: {{ ternary .Values.app.imageWebGreen .Values.app.imageWebBlue (eq .Values.activeColor "green") | quote }}
         ports:
-          - containerPort: {{ .Values.app.containerPort }}
+          - containerPort: {{ .Values.app.containerPortWeb }}
         readinessProbe:
           httpGet:
             path: /health
-            port: {{ .Values.app.containerPort }}
+            port: {{ .Values.app.containerPortWeb }}
           initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /health
-            port: {{ .Values.app.containerPort }}
+            port: {{ .Values.app.containerPortWeb }}
           initialDelaySeconds: 30
           periodSeconds: 20
         resources:
