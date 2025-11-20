@@ -118,23 +118,13 @@ pipeline {
     }
 
 stage('Update Helm values & Deploy') {
-    steps {
-        script {
-            echo "Updating Helm values with new Docker images"
-
-            // Call the update-helm-values.sh script explicitly with bash
-            sh """
-                echo "Running update-helm-values.sh"
-                bash ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
-            """
-
-            // Helm upgrade with reuse-values and wait
-            sh """
-                echo "Running Helm upgrade"
-                helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
-            """
-        }
-    }
+  steps {
+    sh """
+      chmod +x jenkins/scripts/update-helm-values.sh
+      ./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}
+      helm upgrade ${RELEASE} ${CHART_DIR} -n ${NAMESPACE} --install --reuse-values --wait --timeout 5m
+    """
+  }
 }
 
 
