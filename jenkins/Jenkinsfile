@@ -135,14 +135,14 @@ stage('Update Helm values & Deploy') {
             sh "./jenkins/scripts/update-helm-values.sh ${IMAGE_WEB} ${IMAGE_PRODUCT} ${IMAGE_ORDER}"
 
             // Deploy with Helm
-            sh """
+            sh '''
                 johnwickboysclub@jenkins:~/jenkins$ helm upgrade myapp charts/bluegreen-app \
                        -n myns \ 
                        --set prometheus.enabled=false \
                       --set grafana.enabled=false \
                       --set postgres.enabled=false \
                       --install
-            """
+            '''
         }
     }
 }
