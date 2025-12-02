@@ -153,21 +153,19 @@ stage('Update Helm values & Deploy') {
 
     stage('Smoke Test') {
       steps {
-       
-sh """
-  kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web --timeout=180s
-  POD=\$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend -o jsonpath='{.items[0].metadata.name}')
-  kubectl -n ${NAMESPACE} port-forward \$POD 8081:8080 >/tmp/pf.log 2>&1 &
-  PF_PID=\$!
-  sleep 2
-  if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
-    echo "Smoke test failed"
-    kill \$PF_PID || true
-    exit 1
-  fi
-  kill \$PF_PID || true
-"""
-
+        sh """
+          kubectl -n ${NAMESPACE} rollout status deployment/${RELEASE}-web-green --timeout=180s
+          POD=\$(kubectl -n ${NAMESPACE} get pods -l app.kubernetes.io/name=web-frontend,color=green -o jsonpath='{.items[0].metadata.name}')
+          kubectl -n ${NAMESPACE} port-forward \$POD 8081:8080 >/tmp/pf.log 2>&1 &
+          PF_PID=\$!
+          sleep 2
+          if ! curl --fail --max-time 10 http://127.0.0.1:8081/health ; then
+            echo "Smoke test failed"
+            kill \$PF_PID || true
+            exit 1
+          fi
+          kill \$PF_PID || true
+        """
       }
     }
 
