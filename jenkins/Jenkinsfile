@@ -136,14 +136,14 @@ stage('Update Helm values & Deploy') {
 
             // Deploy with Helm
            
-            sh '''
+            sh """
                   helm upgrade myapp charts/bluegreen-app \
                   -n myns \
                   --set prometheus.enabled=false \
                   --set grafana.enabled=false \
                   --set postgres.enabled=false \
                   --install
-              '''
+              """
 
         }
     }
