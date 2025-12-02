@@ -122,7 +122,7 @@ stage('Update Helm values & Deploy') {
         script {
             // Authenticate Jenkins to GKE Autopilot cluster
             sh """
-                gcloud container clusters get-credentials autopilot-cluster --region europe-central2 --project pavan-477919
+                gcloud container clusters get-credentials autopilot-cluster-1 --region us-central1 --project pavan-477919
             """
 
             // Ensure namespace exists
